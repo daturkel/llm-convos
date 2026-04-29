@@ -72,7 +72,7 @@ def pick_interactive(
             line = f" {cid}  {num_responses:>4}  {age:<11}  {text:<{preview_col_width}}"
             lines.append(("class:selected" if abs_i == selected[0] else "", line + "\n"))
         if not show_preview:
-            hint = " ↑↓ navigate   ctrl+↑↓ top/bottom   jk/gg/G scroll preview   / search   enter resume   s show   w write   q quit"
+            hint = " ↑↓ navigate   ctrl+↑↓ top/bottom   / search   enter resume   s show   w write   q quit"
             lines.append(("class:footer", hint))
         return lines
 
@@ -90,7 +90,7 @@ def pick_interactive(
                 visible_flat.append(frag)
             visible_flat.append(("", "\n"))
 
-        hint = f" j/k scroll   {scroll + 1}/{total} lines"
+        hint = f" ↑↓ navigate   ctrl+↑↓ top/bottom   jk/gg/G scroll preview   / search   enter resume   s show   w write   q quit   {scroll + 1}/{total} lines"
         visible_flat.append(("class:footer", hint))
         return visible_flat
 
