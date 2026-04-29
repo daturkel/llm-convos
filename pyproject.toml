@@ -1,0 +1,47 @@
+[project]
+name = "llm-convos"
+version = "0.1"
+description = "Easily browse and resume previous conversations."
+readme = "README.md"
+authors = [{name = "Dan Turkel"}]
+license = "MIT"
+classifiers = []
+requires-python = ">=3.10"
+dependencies = [
+    "llm",
+    "prompt-toolkit>=3.0.52",
+    "rich>=15.0.0",
+]
+
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[tool.uv]
+package = true
+
+[project.urls]
+Homepage = "https://github.com/daturkel/llm-convos"
+Changelog = "https://github.com/daturkel/llm-convos/releases"
+Issues = "https://github.com/daturkel/llm-convos/issues"
+CI = "https://github.com/daturkel/llm-convos/actions"
+
+[project.entry-points.llm]
+convos = "llm_convos"
+
+[dependency-groups]
+dev = ["pytest", "pre-commit", "ruff", "pyright"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+ignore = ["E501"]  # line length handled by formatter
+
+[tool.pyright]
+include = ["llm_convos", "tests"]
+pythonVersion = "3.10"
+typeCheckingMode = "basic"
+reportMissingImports = "warning"
