@@ -79,9 +79,24 @@ def register_commands(cli):
             print_table(rows, search)
             return
 
-        result = pick_interactive(rows, search, show_preview=(mode == "preview"), database=database)
-        if result:
+        current_search = search
+        current_rows = rows
+        while True:
+            result = pick_interactive(
+                current_rows, current_search, show_preview=(mode == "preview"), database=database
+            )
+            if not result:
+                return
             action, cid, extra = result
+            if action == "search":
+                new_rows = fetch_rows(limit, extra, database)
+                if not new_rows:
+                    suffix = f" for '{extra}'" if extra else ""
+                    click.echo(f"No conversations found{suffix}.")
+                else:
+                    current_rows = new_rows
+                    current_search = extra
+                continue
             if action == "show":
                 show_conversation(cid, database)
             elif action == "write":
@@ -90,6 +105,7 @@ def register_commands(cli):
                 if context > 0:
                     print_context(cid, context, database)
                 os.execvp("llm", ["llm", "chat", "--continue", "--conversation", cid])
+            return
 
     @cli.command(name="show")
     @click.argument("conversation_id")

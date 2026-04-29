@@ -72,7 +72,7 @@ def pick_interactive(
             line = f" {cid}  {num_responses:>4}  {age:<11}  {text:<{preview_col_width}}"
             lines.append(("class:selected" if abs_i == selected[0] else "", line + "\n"))
         if not show_preview:
-            hint = " ↑↓ navigate   ctrl+↑↓ top/bottom   jk/gg/G scroll preview   enter resume   s show   w write   q quit"
+            hint = " ↑↓ navigate   ctrl+↑↓ top/bottom   jk/gg/G scroll preview   / search   enter resume   s show   w write   q quit"
             lines.append(("class:footer", hint))
         return lines
 
@@ -165,6 +165,12 @@ def pick_interactive(
         clear_g()
         event.app.exit()
 
+    @kb.add("/")
+    def search_prompt(event):
+        action[0] = "search"
+        clear_g()
+        event.app.exit()
+
     @kb.add("q")
     @kb.add("c-c")
     @kb.add("escape")
@@ -230,5 +236,12 @@ def pick_interactive(
         if not path:
             return None
         extra[0] = path
+
+    if action[0] == "search":
+        try:
+            term = prompt("Search: ", default=search or "").strip()
+        except (KeyboardInterrupt, EOFError):
+            term = ""
+        extra[0] = term or None  # None means clear the search
 
     return action[0], cid, extra[0]
