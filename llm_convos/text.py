@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+import textwrap
 from datetime import datetime, timezone
 
 from rich.text import Text
@@ -72,25 +73,6 @@ def flatten_lines(formatted: FormattedText) -> list[FormattedText]:
     return logical_lines
 
 
-def _wrap_text(text: str, width: int, indent: int = 2) -> list[str]:
-    """Word-wrap a single line to fit within `width` columns, with indent."""
-    words = text.split()
-    out: list[str] = []
-    current = ""
-    prefix = " " * indent
-    max_w = width - indent - 1
-    for word in words:
-        if len(current) + len(word) + (1 if current else 0) <= max_w:
-            current = current + (" " if current else "") + word
-        else:
-            if current:
-                out.append(prefix + current)
-            current = word
-    if current:
-        out.append(prefix + current)
-    return out or [prefix]
-
-
 def build_preview_lines(
     cid: str, search: str | None, preview_width: int, database: str | None
 ) -> FormattedText:
@@ -122,7 +104,9 @@ def build_preview_lines(
             if not raw_line.strip():
                 lines.append((text_style, "\n"))
                 continue
-            for wrapped in _wrap_text(raw_line, preview_width):
+            for wrapped in textwrap.wrap(
+                raw_line, width=preview_width - 3, initial_indent="  ", subsequent_indent="  "
+            ) or ["  "]:
                 if search and search.lower() in wrapped.lower():
                     m = re.search(re.escape(search), wrapped, re.IGNORECASE)
                     if m:

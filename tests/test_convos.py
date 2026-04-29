@@ -388,37 +388,3 @@ def test_flatten_lines_no_trailing_empty():
     fragments = [("", "line\n")]
     result = flatten_lines(fragments)
     assert result == [[("", "line")]]
-
-
-# ---------------------------------------------------------------------------
-# _wrap_text
-# ---------------------------------------------------------------------------
-
-from llm_convos.text import _wrap_text  # noqa: E402
-
-
-def test_wrap_text_short_line_unchanged():
-    # A line shorter than width is returned as-is (with indent)
-    result = _wrap_text("hello world", 80)
-    assert result == ["  hello world"]
-
-
-def test_wrap_text_wraps_long_line():
-    # Words that exceed width are split across lines
-    words = ["word"] * 20
-    result = _wrap_text(" ".join(words), 30)
-    assert len(result) > 1
-    for line in result:
-        assert len(line) <= 30
-
-
-def test_wrap_text_respects_indent():
-    # Each wrapped line starts with the indent prefix
-    result = _wrap_text("a b c d e f", 80, indent=4)
-    assert all(line.startswith("    ") for line in result)
-
-
-def test_wrap_text_empty_string():
-    # Empty input returns a single indented empty line
-    result = _wrap_text("", 80)
-    assert result == ["  "]
