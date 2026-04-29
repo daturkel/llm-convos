@@ -119,15 +119,14 @@ def pick_interactive(
     @kb.add("g")
     def handle_g(_event):
         if last_was_g[0]:
-            select(0)
+            preview_scroll[0] = 0
             clear_g()
         else:
             last_was_g[0] = True
 
     @kb.add("G")
     def jump_bottom(_event):
-        select(len(rows) - 1)
-        list_scroll[0] = max(0, len(rows) - list_visible_rows)
+        preview_scroll[0] = max(0, preview_total_lines[0] - PREVIEW_HEIGHT)
         clear_g()
 
     @kb.add("j")
