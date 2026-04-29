@@ -6,12 +6,14 @@ from io import StringIO
 import pytest
 
 from llm_convos import (
+    build_preview_lines,
     fetch_messages,
     fetch_rows,
+    flatten_lines,
     make_snippet,
     relative_time,
 )
-from llm_convos.display import show_conversation
+from llm_convos.display import print_context, show_conversation
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -293,3 +295,96 @@ def test_show_conversation_unknown_id(db_path):
     # Gracefully handles a missing conversation with no crash
     fetch_messages.cache_clear()
     show_conversation("nonexistent", db_path)  # should not raise
+
+
+def test_show_conversation_multiple_exchanges(db_path, tmp_path):
+    # File output includes all exchanges in order
+    fetch_messages.cache_clear()
+    out = str(tmp_path / "out.md")
+    show_conversation("conv-1", db_path, output=out)
+    with open(out) as f:
+        content = f.read()
+    assert content.index("What is asyncio?") < content.index("How do I use it?")
+
+
+# ---------------------------------------------------------------------------
+# print_context
+# ---------------------------------------------------------------------------
+
+
+def test_print_context_prints_last_n_exchanges(db_path):
+    # With n=1 only the last exchange is printed
+    fetch_messages.cache_clear()
+    buf = StringIO()
+    from unittest.mock import patch
+
+    from rich.console import Console
+
+    with patch("llm_convos.display.console", Console(file=buf, highlight=False)):
+        print_context("conv-1", 1, db_path)
+
+    output = buf.getvalue()
+    assert "How do I use it?" in output
+    assert "Use async/await syntax" in output
+    assert "What is asyncio?" not in output
+
+
+def test_print_context_prints_all_exchanges_when_n_exceeds_count(db_path):
+    # n larger than total exchanges prints everything
+    fetch_messages.cache_clear()
+    buf = StringIO()
+    from unittest.mock import patch
+
+    from rich.console import Console
+
+    with patch("llm_convos.display.console", Console(file=buf, highlight=False)):
+        print_context("conv-1", 99, db_path)
+
+    output = buf.getvalue()
+    assert "What is asyncio?" in output
+    assert "How do I use it?" in output
+
+
+# ---------------------------------------------------------------------------
+# build_preview_lines / flatten_lines
+# ---------------------------------------------------------------------------
+
+
+def test_build_preview_lines_contains_role_labels(db_path):
+    # Preview lines include You/Assistant labels
+    fetch_messages.cache_clear()
+    lines = build_preview_lines("conv-1", None, 80, db_path)
+    text = "".join(t for _, t in lines)
+    assert "You" in text
+    assert "Assistant" in text
+
+
+def test_build_preview_lines_search_highlights_match(db_path):
+    # When search term present, match fragment uses preview.match style
+    fetch_messages.cache_clear()
+    lines = build_preview_lines("conv-1", "asyncio", 80, db_path)
+    styles = [s for s, _ in lines]
+    assert "class:preview.match" in styles
+
+
+def test_build_preview_lines_empty_conversation(db_path):
+    # Unknown cid returns empty indicator
+    fetch_messages.cache_clear()
+    lines = build_preview_lines("nonexistent", None, 80, db_path)
+    assert any("preview.empty" in s for s, _ in lines)
+
+
+def test_flatten_lines_splits_on_newlines():
+    # Each logical line is a separate list
+    fragments = [("a", "hello\nworld"), ("b", "!")]
+    result = flatten_lines(fragments)
+    assert len(result) == 2
+    assert result[0] == [("a", "hello")]
+    assert result[1] == [("a", "world"), ("b", "!")]
+
+
+def test_flatten_lines_no_trailing_empty():
+    # Trailing newline does not produce an empty final line
+    fragments = [("", "line\n")]
+    result = flatten_lines(fragments)
+    assert result == [[("", "line")]]

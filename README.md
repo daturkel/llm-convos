@@ -19,7 +19,7 @@ llm install llm-convos
 llm convos
 ```
 
-This opens an interactive list of your recent conversations. Use arrow keys or `j`/`k` to navigate, and `q` or `Esc` to quit.
+This opens an interactive list of your recent conversations. Use `↑`/`↓` to navigate, and `q` or `Esc` to quit.
 
 From the picker you can:
 - Press `Enter` to resume the selected conversation
