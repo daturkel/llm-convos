@@ -72,7 +72,7 @@ def pick_interactive(
             line = f" {cid}  {num_responses:>4}  {age:<11}  {text:<{preview_col_width}}"
             lines.append(("class:selected" if abs_i == selected[0] else "", line + "\n"))
         if not show_preview:
-            hint = " ↑↓ navigate   jk scroll preview   gg/G top/bottom   enter resume   s show   w write   q quit"
+            hint = " ↑↓ navigate   ctrl+↑↓ top/bottom   jk/gg/G scroll preview   enter resume   s show   w write   q quit"
             lines.append(("class:footer", hint))
         return lines
 
@@ -115,6 +115,15 @@ def pick_interactive(
     @kb.add("down")
     def move_down(_event):
         select(selected[0] + 1)
+
+    @kb.add("c-up")
+    def jump_list_top(_event):
+        select(0)
+
+    @kb.add("c-down")
+    def jump_list_bottom(_event):
+        select(len(rows) - 1)
+        list_scroll[0] = max(0, len(rows) - list_visible_rows)
 
     @kb.add("g")
     def handle_g(_event):

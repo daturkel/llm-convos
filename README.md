@@ -81,6 +81,7 @@ Filters conversations to those containing the search term in any prompt or respo
 | Key | Action |
 |-----|--------|
 | `↑` / `↓` | Navigate the conversation list |
+| `Ctrl+↑` / `Ctrl+↓` | Jump to top / bottom of list |
 | `k` / `j` | Scroll the preview pane up/down |
 | `gg` / `G` | Jump to top / bottom of preview pane |
 | `Enter` | Resume selected conversation |
