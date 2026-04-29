@@ -5,10 +5,12 @@ from __future__ import annotations
 import os
 
 from prompt_toolkit import Application, prompt
+from prompt_toolkit.buffer import Buffer
+from prompt_toolkit.filters import Condition
 from prompt_toolkit.key_binding import KeyBindings
 from prompt_toolkit.layout import HSplit, Layout
-from prompt_toolkit.layout.containers import Window
-from prompt_toolkit.layout.controls import FormattedTextControl
+from prompt_toolkit.layout.containers import ConditionalContainer, Window
+from prompt_toolkit.layout.controls import BufferControl, FormattedTextControl
 from prompt_toolkit.layout.dimension import Dimension
 from prompt_toolkit.styles import Style
 
@@ -39,6 +41,7 @@ def pick_interactive(
     preview_scroll = [0]
     preview_total_lines = [1]
     last_was_g = [False]
+    searching = [False]
 
     term_size = os.get_terminal_size()
     term_width = term_size.columns
@@ -51,6 +54,8 @@ def pick_interactive(
     preview_width = term_width - 2
     fixed_cols = 26 + 4 + 11 + 12
     preview_col_width = max(10, term_width - fixed_cols)
+
+    search_buffer = Buffer(name="search", text=search or "")
 
     def get_list_text() -> list[tuple[str, str]]:
         lines: list[tuple[str, str]] = []
@@ -93,7 +98,7 @@ def pick_interactive(
 
         return visible_flat
 
-    def get_preview_footer_text() -> list[tuple[str, str]]:
+    def get_footer_hint_text() -> list[tuple[str, str]]:
         scroll = preview_scroll[0]
         total = preview_total_lines[0]
         hint = f" ↑↓ navigate   ctrl+↑↓ top/bottom   jk/gg/G scroll preview   / search   enter resume   s show   w write   q quit   {scroll + 1}/{total} lines"
@@ -113,24 +118,27 @@ def pick_interactive(
     def clear_g() -> None:
         last_was_g[0] = False
 
-    @kb.add("up")
+    is_searching = Condition(lambda: searching[0])
+    not_searching = Condition(lambda: not searching[0])
+
+    @kb.add("up", filter=not_searching)
     def move_up(_event):
         select(selected[0] - 1)
 
-    @kb.add("down")
+    @kb.add("down", filter=not_searching)
     def move_down(_event):
         select(selected[0] + 1)
 
-    @kb.add("c-up")
+    @kb.add("c-up", filter=not_searching)
     def jump_list_top(_event):
         select(0)
 
-    @kb.add("c-down")
+    @kb.add("c-down", filter=not_searching)
     def jump_list_bottom(_event):
         select(len(rows) - 1)
         list_scroll[0] = max(0, len(rows) - list_visible_rows)
 
-    @kb.add("g")
+    @kb.add("g", filter=not_searching)
     def handle_g(_event):
         if last_was_g[0]:
             preview_scroll[0] = 0
@@ -138,47 +146,65 @@ def pick_interactive(
         else:
             last_was_g[0] = True
 
-    @kb.add("G")
+    @kb.add("G", filter=not_searching)
     def jump_bottom(_event):
         preview_scroll[0] = max(0, preview_total_lines[0] - preview_height)
         clear_g()
 
-    @kb.add("j")
+    @kb.add("j", filter=not_searching)
     def scroll_preview_down(_event):
         preview_scroll[0] += 1
         clear_g()
 
-    @kb.add("k")
+    @kb.add("k", filter=not_searching)
     def scroll_preview_up(_event):
         preview_scroll[0] = max(0, preview_scroll[0] - 1)
         clear_g()
 
-    @kb.add("enter")
+    @kb.add("enter", filter=not_searching)
     def confirm(event):
         clear_g()
         event.app.exit()
 
-    @kb.add("s")
+    @kb.add("s", filter=not_searching)
     def show(event):
         action[0] = "show"
         clear_g()
         event.app.exit()
 
-    @kb.add("w")
+    @kb.add("w", filter=not_searching)
     def write(event):
         action[0] = "write"
         clear_g()
         event.app.exit()
 
-    @kb.add("/")
-    def search_prompt(event):
-        action[0] = "search"
+    @kb.add("/", filter=not_searching)
+    def start_search(event):
+        searching[0] = True
+        search_buffer.set_document(
+            search_buffer.document.__class__(search_buffer.text, len(search_buffer.text))
+        )
+        event.app.layout.focus(search_buffer)
         clear_g()
+
+    @kb.add("enter", filter=is_searching)
+    def submit_search(event):
+        searching[0] = False
+        term = search_buffer.text.strip()
+        extra[0] = term or None
+        action[0] = "search"
+        event.app.layout.focus(list_control)
         event.app.exit()
 
-    @kb.add("q")
-    @kb.add("c-c")
-    @kb.add("escape")
+    @kb.add("escape", filter=is_searching)
+    @kb.add("c-c", filter=is_searching)
+    def cancel_search(event):
+        searching[0] = False
+        event.app.layout.focus(list_control)
+
+    @kb.add("q", filter=not_searching)
+    @kb.add("c-c", filter=not_searching)
+    @kb.add("escape", filter=not_searching)
     def cancel(event):
         cancelled[0] = True
         clear_g()
@@ -190,6 +216,7 @@ def pick_interactive(
             "separator": "ansidarkgray",
             "selected": "reverse bold",
             "footer": "ansidarkgray italic",
+            "search-label": "ansidarkgray",
             "preview.user": "bold cyan",
             "preview.assistant": "bold green",
             "preview.user.text": "noinherit",
@@ -201,10 +228,11 @@ def pick_interactive(
     )
 
     list_control = FormattedTextControl(get_list_text, focusable=True)
+    search_control = BufferControl(buffer=search_buffer, focusable=True)
 
     if show_preview:
         preview_control = FormattedTextControl(get_preview_text, focusable=False)
-        footer_control = FormattedTextControl(get_preview_footer_text, focusable=False)
+        footer_control = FormattedTextControl(get_footer_hint_text, focusable=False)
         root = HSplit(
             [
                 Window(content=list_control, height=Dimension(preferred=list_height)),
@@ -213,14 +241,30 @@ def pick_interactive(
                     content=preview_control,
                     height=Dimension(min=preview_height - 1, max=preview_height - 1),
                 ),
-                Window(content=footer_control, height=1),
+                ConditionalContainer(
+                    Window(content=footer_control, height=1),
+                    filter=not_searching,
+                ),
+                ConditionalContainer(
+                    HSplit(
+                        [
+                            Window(height=1, char="─", style="class:separator"),
+                            Window(
+                                content=search_control,
+                                height=1,
+                                get_line_prefix=lambda *_: [("class:search-label", " Search: ")],
+                            ),
+                        ]
+                    ),
+                    filter=is_searching,
+                ),
             ]
         )
     else:
         root = Window(content=list_control)
 
     app: Application = Application(
-        layout=Layout(root),
+        layout=Layout(root, focused_element=list_control),
         key_bindings=kb,
         style=style,
         full_screen=show_preview,
@@ -244,11 +288,12 @@ def pick_interactive(
             return None
         extra[0] = path
 
-    if action[0] == "search":
+    if action[0] == "search" and not show_preview:
+        # Non-preview mode still uses the external prompt approach
         try:
             term = prompt("Search: ", default=search or "").strip()
         except (KeyboardInterrupt, EOFError):
             term = ""
-        extra[0] = term or None  # None means clear the search
+        extra[0] = term or None
 
     return action[0], cid, extra[0]
