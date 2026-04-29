@@ -19,9 +19,26 @@ llm install llm-convos
 llm convos
 ```
 
-This opens an interactive list of your recent conversations. Use arrow keys or `j`/`k` to navigate, press `Enter` to resume the selected conversation, and `q` or `Esc` to quit.
+This opens an interactive list of your recent conversations. Use arrow keys or `j`/`k` to navigate, and `q` or `Esc` to quit.
+
+From the picker you can:
+- Press `Enter` to resume the selected conversation
+- Press `s` to show the full conversation rendered as markdown in your terminal
+- Press `w` to write the conversation to a markdown file (prompts for a filename, pre-filled with the conversation ID)
 
 Pass `-c N/--context N` to print the last N exchanges before resuming, so you have context for where you left off.
+
+### Show a conversation directly
+
+```bash
+llm convos show <conversation-id>
+```
+
+Renders the full conversation as markdown in your terminal. Pass `-o`/`--output` to write to a file instead:
+
+```bash
+llm convos show <conversation-id> -o transcript.md
+```
 
 ### Modes
 
@@ -43,6 +60,7 @@ Filters conversations to those containing the search term in any prompt or respo
 
 ### Options
 
+`llm convos`:
 ```
 -n, --limit INTEGER      Max conversations to show (-1 for all) [default: 20]
 -s, --search TEXT        Filter by prompt/response text
@@ -50,6 +68,12 @@ Filters conversations to those containing the search term in any prompt or respo
                          Display mode
 -d, --database FILE      Path to log database (default: llm's logs.db)
 -c, --context INTEGER    Exchanges to print before resuming [default: 0]
+```
+
+`llm convos show <conversation-id>`:
+```
+-o, --output FILE        Write markdown to this file instead of printing
+-d, --database FILE      Path to log database (default: llm's logs.db)
 ```
 
 ### Keyboard shortcuts
@@ -61,6 +85,8 @@ Filters conversations to those containing the search term in any prompt or respo
 | `gg` | Jump to top of preview (preview mode) / top of list (interactive mode) |
 | `G` | Jump to bottom of preview (preview mode) / bottom of list (interactive mode) |
 | `Enter` | Resume selected conversation |
+| `s` | Show selected conversation as markdown in terminal |
+| `w` | Write selected conversation to a markdown file |
 | `q` / `Esc` | Quit |
 
 ### Custom database path
