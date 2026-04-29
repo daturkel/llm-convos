@@ -27,9 +27,11 @@ def pick_interactive(
 ) -> tuple[str, str, str | None] | None:
     """Show an interactive picker.
 
-    Returns a tuple of (action, cid, extra) where action is one of "resume",
-    "show", or "write"; extra is the destination filepath for "write" or None.
-    Returns None if cancelled.
+    Returns a tuple of (action, cid, extra) or None if cancelled.
+    - action "resume": cid is the conversation to continue, extra is None
+    - action "show": cid is the conversation to display, extra is None
+    - action "write": cid is the conversation to save, extra is the filepath
+    - action "search": extra is the new search term (or None to clear)
     """
     selected = [0]
     cancelled = [False]

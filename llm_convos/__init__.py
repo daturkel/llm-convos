@@ -9,7 +9,7 @@ import click
 import llm
 
 # Re-exported for tests
-from .db import fetch_messages, fetch_rows, get_db_path, open_db  # noqa: F401
+from .db import fetch_messages, fetch_rows  # noqa: F401
 from .display import print_context, print_table, show_conversation
 from .text import (  # noqa: F401
     build_preview_lines,

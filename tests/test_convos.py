@@ -166,12 +166,6 @@ def test_fetch_messages_returns_alternating_roles(db_path):
     assert messages[3] == ("assistant", "Use async/await syntax")
 
 
-def test_fetch_messages_ordered_oldest_first(db_path):
-    fetch_messages.cache_clear()
-    messages = fetch_messages("conv-1", db_path)
-    assert messages[0][1] == "What is asyncio?"
-
-
 def test_fetch_messages_unknown_conversation(db_path):
     fetch_messages.cache_clear()
     messages = fetch_messages("nonexistent", db_path)
