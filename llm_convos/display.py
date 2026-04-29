@@ -83,6 +83,7 @@ def show_conversation(cid: str, database: str | None, output: str | None = None)
         else:
             i += 1
 
+    c = Console()
     if output:
         lines: list[str] = []
         for prompt, response in exchanges:
@@ -91,9 +92,8 @@ def show_conversation(cid: str, database: str | None, output: str | None = None)
             )
         with open(output, "w") as f:
             f.write("".join(lines).rstrip() + "\n")
-        console.print(f"[dim]Written to {output}[/dim]")
+        c.print(f"[dim]Written to {output}[/dim]")
     else:
-        c = Console()
         for prompt, response in exchanges:
             c.print("[bold cyan]You[/bold cyan]")
             c.print(Markdown(prompt.strip()))
