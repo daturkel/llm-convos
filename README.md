@@ -82,8 +82,7 @@ Filters conversations to those containing the search term in any prompt or respo
 |-----|--------|
 | `↑` / `↓` | Navigate the conversation list |
 | `k` / `j` | Scroll the preview pane up/down |
-| `gg` | Jump to top of list (interactive mode) / top of preview (preview mode) |
-| `G` | Jump to bottom of list (interactive mode) / bottom of preview (preview mode) |
+| `gg` / `G` | Jump to top / bottom of list |
 | `Enter` | Resume selected conversation |
 | `s` | Show selected conversation as markdown in terminal |
 | `w` | Write selected conversation to a markdown file |
