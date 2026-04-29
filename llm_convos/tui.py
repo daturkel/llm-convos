@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import os
 
-from prompt_toolkit import Application
+from prompt_toolkit import Application, prompt
 from prompt_toolkit.key_binding import KeyBindings
 from prompt_toolkit.layout import HSplit, Layout
 from prompt_toolkit.layout.containers import Window
@@ -24,10 +24,17 @@ def pick_interactive(
     search: str | None,
     show_preview: bool,
     database: str | None,
-) -> str | None:
-    """Show an interactive picker. Returns the selected conversation id, or None if cancelled."""
+) -> tuple[str, str, str | None] | None:
+    """Show an interactive picker.
+
+    Returns a tuple of (action, cid, extra) where action is one of "resume",
+    "show", or "write"; extra is the destination filepath for "write" or None.
+    Returns None if cancelled.
+    """
     selected = [0]
     cancelled = [False]
+    action = ["resume"]
+    extra: list[str | None] = [None]
     list_scroll = [0]
     preview_scroll = [0]
     preview_total_lines = [1]
@@ -65,7 +72,7 @@ def pick_interactive(
             line = f" {cid}  {num_responses:>4}  {age:<11}  {text:<{preview_col_width}}"
             lines.append(("class:selected" if abs_i == selected[0] else "", line + "\n"))
         if not show_preview:
-            hint = " ↑↓/jk navigate   gg/G top/bottom   enter resume   q quit"
+            hint = " ↑↓/jk navigate   gg/G top/bottom   enter resume   s show   w write   q quit"
             lines.append(("class:footer", hint))
         return lines
 
@@ -155,6 +162,18 @@ def pick_interactive(
         clear_g()
         event.app.exit()
 
+    @kb.add("s")
+    def show(event):
+        action[0] = "show"
+        clear_g()
+        event.app.exit()
+
+    @kb.add("w")
+    def write(event):
+        action[0] = "write"
+        clear_g()
+        event.app.exit()
+
     @kb.add("q")
     @kb.add("c-c")
     @kb.add("escape")
@@ -207,4 +226,18 @@ def pick_interactive(
 
     if cancelled[0]:
         return None
-    return rows[selected[0]][0]
+
+    cid = rows[selected[0]][0]
+
+    if action[0] == "write":
+        # Prompt for filename after the TUI has fully exited
+        default_name = f"{cid[:8]}.md"
+        try:
+            path = prompt("Save to: ", default=default_name).strip()
+        except (KeyboardInterrupt, EOFError):
+            path = ""
+        if not path:
+            return None
+        extra[0] = path
+
+    return action[0], cid, extra[0]

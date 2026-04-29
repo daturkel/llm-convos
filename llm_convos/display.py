@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from rich import box
 from rich.console import Console
+from rich.markdown import Markdown
 from rich.table import Table
 from rich.text import Text
 
@@ -57,3 +58,46 @@ def print_context(cid: str, n: int, database: str | None) -> None:
         console.print()
 
     console.rule(style="dim")
+
+
+def show_conversation(cid: str, database: str | None, output: str | None = None) -> None:
+    """Render a full conversation as Rich markdown or write it as a markdown file.
+
+    Args:
+        cid: Conversation ID to show.
+        database: Path to the log database, or None to use the default.
+        output: If set, write raw markdown to this file path instead of printing.
+
+    """
+    messages = fetch_messages(cid, database)
+    if not messages:
+        console.print(f"[dim]No messages found for conversation {cid}.[/dim]")
+        return
+
+    exchanges: list[tuple[str, str]] = []
+    i = 0
+    while i < len(messages) - 1:
+        if messages[i][0] == "user" and messages[i + 1][0] == "assistant":
+            exchanges.append((messages[i][1], messages[i + 1][1]))
+            i += 2
+        else:
+            i += 1
+
+    if output:
+        lines: list[str] = []
+        for prompt, response in exchanges:
+            lines.append(
+                f"## You\n\n{prompt.strip()}\n\n## Assistant\n\n{response.strip()}\n\n---\n\n"
+            )
+        with open(output, "w") as f:
+            f.write("".join(lines).rstrip() + "\n")
+        console.print(f"[dim]Written to {output}[/dim]")
+    else:
+        c = Console()
+        for prompt, response in exchanges:
+            c.print("[bold cyan]You[/bold cyan]")
+            c.print(Markdown(prompt.strip()))
+            c.print()
+            c.print("[bold green]Assistant[/bold green]")
+            c.print(Markdown(response.strip()))
+            c.rule(style="dim")

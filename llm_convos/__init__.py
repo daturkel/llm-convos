@@ -10,7 +10,7 @@ import llm
 
 # Re-exported for tests
 from .db import fetch_messages, fetch_rows, get_db_path, open_db  # noqa: F401
-from .display import print_context, print_table
+from .display import print_context, print_table, show_conversation
 from .text import (  # noqa: F401
     build_preview_lines,
     flatten_lines,
@@ -18,6 +18,14 @@ from .text import (  # noqa: F401
     relative_time,
 )
 from .tui import pick_interactive
+
+_database_option = click.option(
+    "-d",
+    "--database",
+    type=click.Path(readable=True, dir_okay=False),
+    default=None,
+    help="Path to log database (default: llm's logs.db)",
+)
 
 
 @llm.hookimpl
@@ -43,13 +51,7 @@ def register_commands(cli):
         default=None,
         help="Display mode (default: interactive when tty, plain otherwise)",
     )
-    @click.option(
-        "-d",
-        "--database",
-        type=click.Path(readable=True, dir_okay=False),
-        default=None,
-        help="Path to log database (default: llm's logs.db)",
-    )
+    @_database_option
     @click.option(
         "-c",
         "--context",
@@ -77,8 +79,28 @@ def register_commands(cli):
             print_table(rows, search)
             return
 
-        cid = pick_interactive(rows, search, show_preview=(mode == "preview"), database=database)
-        if cid:
-            if context > 0:
-                print_context(cid, context, database)
-            os.execvp("llm", ["llm", "chat", "--continue", "--conversation", cid])
+        result = pick_interactive(rows, search, show_preview=(mode == "preview"), database=database)
+        if result:
+            action, cid, extra = result
+            if action == "show":
+                show_conversation(cid, database)
+            elif action == "write":
+                show_conversation(cid, database, output=extra)
+            else:  # resume
+                if context > 0:
+                    print_context(cid, context, database)
+                os.execvp("llm", ["llm", "chat", "--continue", "--conversation", cid])
+
+    @cli.command(name="show")
+    @click.argument("conversation_id")
+    @click.option(
+        "-o",
+        "--output",
+        type=click.Path(dir_okay=False, writable=True),
+        default=None,
+        help="Write markdown to this file instead of printing",
+    )
+    @_database_option
+    def show(conversation_id: str, output: str | None, database: str | None) -> None:
+        """Show a conversation rendered as markdown."""
+        show_conversation(conversation_id, database, output)

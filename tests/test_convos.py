@@ -1,6 +1,7 @@
 import re
 import sqlite3
 from datetime import datetime, timedelta, timezone
+from io import StringIO
 
 import pytest
 
@@ -10,6 +11,7 @@ from llm_convos import (
     make_snippet,
     relative_time,
 )
+from llm_convos.display import show_conversation
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -250,3 +252,44 @@ def test_make_snippet_strips_newlines():
     text = "line one\nline two\nTARGET here"
     result = make_snippet(text, "TARGET")
     assert "\n" not in result.plain
+
+
+# ---------------------------------------------------------------------------
+# show_conversation
+# ---------------------------------------------------------------------------
+
+
+def test_show_conversation_terminal(db_path):
+    # Renders role labels and message text when no output path given
+    fetch_messages.cache_clear()
+    from unittest.mock import patch
+
+    from rich.console import Console
+
+    buf = StringIO()
+    with patch("llm_convos.display.Console", return_value=Console(file=buf, highlight=False)):
+        show_conversation("conv-1", db_path)
+
+    output = buf.getvalue()
+    assert "What is asyncio?" in output
+    assert "asyncio is a library" in output
+
+
+def test_show_conversation_file_output(db_path, tmp_path):
+    # Writes markdown with expected structure to file
+    fetch_messages.cache_clear()
+    out = str(tmp_path / "out.md")
+    show_conversation("conv-1", db_path, output=out)
+    with open(out) as f:
+        content = f.read()
+    assert "## You" in content
+    assert "## Assistant" in content
+    assert "What is asyncio?" in content
+    assert "asyncio is a library" in content
+    assert "---" in content
+
+
+def test_show_conversation_unknown_id(db_path):
+    # Gracefully handles a missing conversation with no crash
+    fetch_messages.cache_clear()
+    show_conversation("nonexistent", db_path)  # should not raise
