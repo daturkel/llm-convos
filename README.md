@@ -80,10 +80,10 @@ Filters conversations to those containing the search term in any prompt or respo
 
 | Key | Action |
 |-----|--------|
-| `↑` / `k` | Move up (interactive mode) / scroll preview up (preview mode) |
-| `↓` / `j` | Move down (interactive mode) / scroll preview down (preview mode) |
-| `gg` | Jump to top of preview (preview mode) / top of list (interactive mode) |
-| `G` | Jump to bottom of preview (preview mode) / bottom of list (interactive mode) |
+| `↑` / `↓` | Navigate the conversation list |
+| `k` / `j` | Scroll the preview pane up/down |
+| `gg` | Jump to top of list (interactive mode) / top of preview (preview mode) |
+| `G` | Jump to bottom of list (interactive mode) / bottom of preview (preview mode) |
 | `Enter` | Resume selected conversation |
 | `s` | Show selected conversation as markdown in terminal |
 | `w` | Write selected conversation to a markdown file |
