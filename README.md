@@ -100,6 +100,14 @@ llm convos -d /path/to/logs.db
 
 The `LLM_USER_PATH` environment variable is also respected automatically.
 
+## Planned
+
+- Inline filename prompt for `w` in interactive mode (currently tears down the screen)
+- Pager support for `llm convos show` on long conversations
+- Copy conversation ID to clipboard (`c` keybinding)
+- README demo GIF
+- `--model` filter flag to show only conversations from a specific model
+
 ## Development
 
 ```bash
