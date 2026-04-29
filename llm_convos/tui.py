@@ -16,8 +16,6 @@ from .text import build_preview_lines, flatten_lines, relative_time
 
 Row = tuple[str, str | None, int, str, str]
 
-PREVIEW_HEIGHT = 12
-
 
 def pick_interactive(
     rows: list[Row],
@@ -46,7 +44,8 @@ def pick_interactive(
     term_width = term_size.columns
     term_height = term_size.lines
 
-    list_height = max(5, term_height - PREVIEW_HEIGHT - 1) if show_preview else term_height - 3
+    preview_height = max(5, term_height // 2) if show_preview else 0
+    list_height = max(5, term_height - preview_height - 1) if show_preview else term_height - 3
     # header + separator = 2 lines; footer hint adds 1 more in non-preview mode
     list_visible_rows = list_height - (2 if show_preview else 3)
     preview_width = term_width - 2
@@ -83,7 +82,7 @@ def pick_interactive(
         all_lines = flatten_lines(build_preview_lines(cid, search, preview_width, database))
         total = len(all_lines)
         preview_total_lines[0] = total
-        scroll = min(preview_scroll[0], max(0, total - PREVIEW_HEIGHT))
+        scroll = min(preview_scroll[0], max(0, total - preview_height))
         preview_scroll[0] = scroll
 
         visible_flat: list[tuple[str, str]] = []
@@ -137,7 +136,7 @@ def pick_interactive(
 
     @kb.add("G")
     def jump_bottom(_event):
-        preview_scroll[0] = max(0, preview_total_lines[0] - PREVIEW_HEIGHT)
+        preview_scroll[0] = max(0, preview_total_lines[0] - preview_height)
         clear_g()
 
     @kb.add("j")
@@ -207,7 +206,7 @@ def pick_interactive(
                 Window(height=1, char="─", style="class:separator"),
                 Window(
                     content=preview_control,
-                    height=Dimension(min=PREVIEW_HEIGHT, max=PREVIEW_HEIGHT),
+                    height=Dimension(min=preview_height, max=preview_height),
                 ),
             ]
         )
