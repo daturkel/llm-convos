@@ -10,7 +10,12 @@ from prompt_toolkit.document import Document
 from prompt_toolkit.filters import Condition
 from prompt_toolkit.key_binding import KeyBindings
 from prompt_toolkit.layout import HSplit, Layout
-from prompt_toolkit.layout.containers import ConditionalContainer, Window
+from prompt_toolkit.layout.containers import (
+    ConditionalContainer,
+    Float,
+    FloatContainer,
+    Window,
+)
 from prompt_toolkit.layout.controls import BufferControl, FormattedTextControl
 from prompt_toolkit.layout.dimension import Dimension
 from prompt_toolkit.styles import Style
@@ -18,6 +23,25 @@ from prompt_toolkit.styles import Style
 from .text import build_preview_lines, flatten_lines, relative_time
 
 Row = tuple[str, str | None, int, str, str]
+
+HINT_INTERACTIVE = (
+    " ↑↓ navigate   ctrl+↑↓ top/bottom   / search   enter resume   s show   w write   q quit"
+)
+HINT_PREVIEW = " ↑↓ navigate   ctrl+↑↓ top/bottom   jk/gg/G scroll preview   / search   enter resume   s show   w write   q quit"
+HINT_SHORT = " ? shortcuts"
+
+SHORTCUTS = [
+    ("↑ / ↓", "Navigate list"),
+    ("Ctrl+↑ / Ctrl+↓", "Jump to top / bottom of list"),
+    ("j / k", "Scroll preview up/down"),
+    ("gg / G", "Jump to top / bottom of preview"),
+    ("/ ", "Search"),
+    ("Enter", "Resume conversation"),
+    ("s", "Show conversation"),
+    ("w", "Write to markdown file"),
+    ("q / Esc", "Quit"),
+    ("?", "Toggle this help"),
+]
 
 
 def pick_interactive(
@@ -43,6 +67,7 @@ def pick_interactive(
     preview_total_lines = [1]
     last_was_g = [False]
     searching = [False]
+    showing_help = [False]
 
     term_size = os.get_terminal_size()
     term_width = term_size.columns
@@ -55,6 +80,10 @@ def pick_interactive(
     preview_width = term_width - 2
     fixed_cols = 26 + 4 + 11 + 12
     preview_col_width = max(10, term_width - fixed_cols)
+
+    # Use short hint if terminal is too narrow for the full one
+    full_hint = HINT_PREVIEW if show_preview else HINT_INTERACTIVE
+    hint_text = full_hint if term_width >= len(full_hint) else HINT_SHORT
 
     initial_search = search or ""
     search_buffer = Buffer(name="search", document=Document(initial_search, len(initial_search)))
@@ -80,8 +109,7 @@ def pick_interactive(
             line = f" {cid}  {num_responses:>4}  {age:<11}  {text:<{preview_col_width}}"
             lines.append(("class:selected" if abs_i == selected[0] else "", line + "\n"))
         if not show_preview:
-            hint = " ↑↓ navigate   ctrl+↑↓ top/bottom   / search   enter resume   s show   w write   q quit"
-            lines.append(("class:footer", hint))
+            lines.append(("class:footer", hint_text))
         return lines
 
     def get_preview_text() -> list[tuple[str, str]]:
@@ -103,8 +131,19 @@ def pick_interactive(
     def get_footer_hint_text() -> list[tuple[str, str]]:
         scroll = preview_scroll[0]
         total = preview_total_lines[0]
-        hint = f" ↑↓ navigate   ctrl+↑↓ top/bottom   jk/gg/G scroll preview   / search   enter resume   s show   w write   q quit   {scroll + 1}/{total} lines"
-        return [("class:footer", hint)]
+        suffix = f"   {scroll + 1}/{total} lines"
+        text = hint_text + suffix if hint_text != HINT_SHORT else hint_text
+        return [("class:footer", text)]
+
+    def get_help_text() -> list[tuple[str, str]]:
+        key_w = max(len(k) for k, _ in SHORTCUTS)
+        lines: list[tuple[str, str]] = [("class:help.title", " Keyboard shortcuts\n")]
+        lines.append(("class:help.separator", " " + "─" * (key_w + 22) + "\n"))
+        for key, desc in SHORTCUTS:
+            lines.append(("class:help.key", f"  {key:<{key_w}}"))
+            lines.append(("class:help.desc", f"  {desc}\n"))
+        lines.append(("class:footer", " any key to close"))
+        return lines
 
     kb = KeyBindings()
 
@@ -122,25 +161,27 @@ def pick_interactive(
 
     is_searching = Condition(lambda: searching[0])
     not_searching = Condition(lambda: not searching[0])
+    is_showing_help = Condition(lambda: showing_help[0])
+    not_showing_help = Condition(lambda: not showing_help[0])
 
-    @kb.add("up", filter=not_searching)
+    @kb.add("up", filter=not_searching & not_showing_help)
     def move_up(_event):
         select(selected[0] - 1)
 
-    @kb.add("down", filter=not_searching)
+    @kb.add("down", filter=not_searching & not_showing_help)
     def move_down(_event):
         select(selected[0] + 1)
 
-    @kb.add("c-up", filter=not_searching)
+    @kb.add("c-up", filter=not_searching & not_showing_help)
     def jump_list_top(_event):
         select(0)
 
-    @kb.add("c-down", filter=not_searching)
+    @kb.add("c-down", filter=not_searching & not_showing_help)
     def jump_list_bottom(_event):
         select(len(rows) - 1)
         list_scroll[0] = max(0, len(rows) - list_visible_rows)
 
-    @kb.add("g", filter=not_searching)
+    @kb.add("g", filter=not_searching & not_showing_help)
     def handle_g(_event):
         if last_was_g[0]:
             preview_scroll[0] = 0
@@ -148,39 +189,39 @@ def pick_interactive(
         else:
             last_was_g[0] = True
 
-    @kb.add("G", filter=not_searching)
+    @kb.add("G", filter=not_searching & not_showing_help)
     def jump_bottom(_event):
         preview_scroll[0] = max(0, preview_total_lines[0] - preview_height)
         clear_g()
 
-    @kb.add("j", filter=not_searching)
+    @kb.add("j", filter=not_searching & not_showing_help)
     def scroll_preview_down(_event):
         preview_scroll[0] += 1
         clear_g()
 
-    @kb.add("k", filter=not_searching)
+    @kb.add("k", filter=not_searching & not_showing_help)
     def scroll_preview_up(_event):
         preview_scroll[0] = max(0, preview_scroll[0] - 1)
         clear_g()
 
-    @kb.add("enter", filter=not_searching)
+    @kb.add("enter", filter=not_searching & not_showing_help)
     def confirm(event):
         clear_g()
         event.app.exit()
 
-    @kb.add("s", filter=not_searching)
+    @kb.add("s", filter=not_searching & not_showing_help)
     def show(event):
         action[0] = "show"
         clear_g()
         event.app.exit()
 
-    @kb.add("w", filter=not_searching)
+    @kb.add("w", filter=not_searching & not_showing_help)
     def write(event):
         action[0] = "write"
         clear_g()
         event.app.exit()
 
-    @kb.add("/", filter=not_searching)
+    @kb.add("/", filter=not_searching & not_showing_help)
     def start_search(event):
         searching[0] = True
         search_buffer.set_document(Document(search_buffer.text, len(search_buffer.text)))
@@ -202,9 +243,19 @@ def pick_interactive(
         searching[0] = False
         event.app.layout.focus(list_control)
 
-    @kb.add("q", filter=not_searching)
-    @kb.add("c-c", filter=not_searching)
-    @kb.add("escape", filter=not_searching)
+    @kb.add("?", filter=not_searching)
+    def toggle_help(event):
+        showing_help[0] = not showing_help[0]
+        clear_g()
+
+    # Any key closes help (except ? which toggles it — handled above)
+    @kb.add("<any>", filter=is_showing_help & not_searching)
+    def close_help(_event):
+        showing_help[0] = False
+
+    @kb.add("q", filter=not_searching & not_showing_help)
+    @kb.add("c-c", filter=not_searching & not_showing_help)
+    @kb.add("escape", filter=not_searching & not_showing_help)
     def cancel(event):
         cancelled[0] = True
         clear_g()
@@ -224,16 +275,28 @@ def pick_interactive(
             "preview.separator": "ansidarkgray",
             "preview.match": "bold yellow",
             "preview.empty": "ansidarkgray italic",
+            "help.title": "bold cyan",
+            "help.separator": "ansidarkgray",
+            "help.key": "bold",
+            "help.desc": "",
+            "help-modal": "bg:#1e1e1e",
         }
     )
 
     list_control = FormattedTextControl(get_list_text, focusable=True)
     search_control = BufferControl(buffer=search_buffer, focusable=True)
 
+    help_window = Window(
+        content=FormattedTextControl(get_help_text),
+        style="class:help-modal",
+        width=Dimension(preferred=50, max=60),
+        height=Dimension(preferred=len(SHORTCUTS) + 3),
+    )
+
     if show_preview:
         preview_control = FormattedTextControl(get_preview_text, focusable=False)
         footer_control = FormattedTextControl(get_footer_hint_text, focusable=False)
-        root = HSplit(
+        inner = HSplit(
             [
                 Window(content=list_control, height=Dimension(preferred=list_height)),
                 Window(height=1, char="─", style="class:separator"),
@@ -261,7 +324,18 @@ def pick_interactive(
             ]
         )
     else:
-        root = Window(content=list_control)
+        inner = Window(content=list_control)
+
+    root = FloatContainer(
+        content=inner,
+        floats=[
+            Float(
+                content=ConditionalContainer(help_window, filter=is_showing_help),
+                xcursor=False,
+                ycursor=False,
+            )
+        ],
+    )
 
     app: Application = Application(
         layout=Layout(root, focused_element=list_control),
