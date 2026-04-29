@@ -91,9 +91,13 @@ def pick_interactive(
                 visible_flat.append(frag)
             visible_flat.append(("", "\n"))
 
-        hint = f" ↑↓ navigate   ctrl+↑↓ top/bottom   jk/gg/G scroll preview   / search   enter resume   s show   w write   q quit   {scroll + 1}/{total} lines"
-        visible_flat.append(("class:footer", hint))
         return visible_flat
+
+    def get_preview_footer_text() -> list[tuple[str, str]]:
+        scroll = preview_scroll[0]
+        total = preview_total_lines[0]
+        hint = f" ↑↓ navigate   ctrl+↑↓ top/bottom   jk/gg/G scroll preview   / search   enter resume   s show   w write   q quit   {scroll + 1}/{total} lines"
+        return [("class:footer", hint)]
 
     kb = KeyBindings()
 
@@ -200,14 +204,16 @@ def pick_interactive(
 
     if show_preview:
         preview_control = FormattedTextControl(get_preview_text, focusable=False)
+        footer_control = FormattedTextControl(get_preview_footer_text, focusable=False)
         root = HSplit(
             [
                 Window(content=list_control, height=Dimension(preferred=list_height)),
                 Window(height=1, char="─", style="class:separator"),
                 Window(
                     content=preview_control,
-                    height=Dimension(min=preview_height, max=preview_height),
+                    height=Dimension(min=preview_height - 1, max=preview_height - 1),
                 ),
+                Window(content=footer_control, height=1),
             ]
         )
     else:
