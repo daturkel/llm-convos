@@ -6,6 +6,7 @@ import os
 
 from prompt_toolkit import Application, prompt
 from prompt_toolkit.buffer import Buffer
+from prompt_toolkit.document import Document
 from prompt_toolkit.filters import Condition
 from prompt_toolkit.key_binding import KeyBindings
 from prompt_toolkit.layout import HSplit, Layout
@@ -55,7 +56,8 @@ def pick_interactive(
     fixed_cols = 26 + 4 + 11 + 12
     preview_col_width = max(10, term_width - fixed_cols)
 
-    search_buffer = Buffer(name="search", text=search or "")
+    initial_search = search or ""
+    search_buffer = Buffer(name="search", document=Document(initial_search, len(initial_search)))
 
     def get_list_text() -> list[tuple[str, str]]:
         lines: list[tuple[str, str]] = []
@@ -181,9 +183,7 @@ def pick_interactive(
     @kb.add("/", filter=not_searching)
     def start_search(event):
         searching[0] = True
-        search_buffer.set_document(
-            search_buffer.document.__class__(search_buffer.text, len(search_buffer.text))
-        )
+        search_buffer.set_document(Document(search_buffer.text, len(search_buffer.text)))
         event.app.layout.focus(search_buffer)
         clear_g()
 
